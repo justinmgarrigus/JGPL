@@ -1,0 +1,38 @@
+<int var1> + <int var2>: int 
+	int temp 
+	~IADD temp, var1, var2
+	return temp 
+	
+<identifier id> = <value val>: 
+	~ASSIGN id, val
+
+<type var_type> <identifier id>:
+	~INSERT id, type
+	code_block block = get id enclosing scope 
+	add code to block: 
+		~REMOVE id
+
+<type var_type> <identifier id> = <value val>:
+	var_type id
+	id = val
+
+int input: int
+	int temp
+	~IINPUT temp
+	return temp
+	
+display <value val>: 
+	if id is int: 
+		~IPRINT id
+	else if id is float: 
+		~FPRINT id
+	else if id is string: 
+		for each character in id: 
+			~CPRINT character
+
+int a = 5 
+int b = 7 
+int c = int input
+int d = a + b
+d = d + c
+display d
