@@ -1,27 +1,27 @@
-<int var1> + <int var2>: int 
+func <int var1> + <int var2>: int 
 	int temp 
 	~IADD temp, var1, var2
 	return temp 
 	
-<identifier id> = <value val>: 
+func <identifier id> = <value val>: 
 	~ASSIGN id, val
 
-<type var_type> <identifier id>:
+func <type var_type> <identifier id>:
 	~INSERT id, type
 	code_block block = get id enclosing scope 
 	add code to block: 
 		~REMOVE id
 
-<type var_type> <identifier id> = <value val>:
+func <type var_type> <identifier id> = <value val>:
 	var_type id
 	id = val
 
-int input: int
+func int input: int
 	int temp
 	~IINPUT temp
 	return temp
 	
-display <value val>: 
+func display <value val>: 
 	if id is int: 
 		~IPRINT id
 	else if id is float: 
