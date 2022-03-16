@@ -56,6 +56,7 @@ def lex(filename):
 		isLetter = False 
 		isNumber = False 
 		isIndent = False 
+		indent = 0 
 		while ch != "":
 			if ch.isalpha() or ch == "_":
 				if len(lexeme) > 0 and (isNumber or isIndent):
@@ -65,9 +66,10 @@ def lex(filename):
 						isNumber = False 
 					elif isIndent:
 						current.token = Token.INDENT
-						current.indent = len(lexeme)
+						indent = len(lexeme) 
 						isIndent = False 
 					current.lexeme = lexeme 
+					current.indent = indent
 					current.next = Lex() 
 					current = current.next
 					isLetter = True 
@@ -80,7 +82,8 @@ def lex(filename):
 					isNumber = True
 				elif isIndent: 
 					current.token = Token.INDENT
-					current.indent = len(lexeme) 
+					indent = len(indent) 
+					current.indent = indent 
 					current.lexeme = lexeme 
 					current.next = Lex() 
 					current = current.next 
@@ -100,16 +103,19 @@ def lex(filename):
 						isNumber = False 
 					elif isIndent: 
 						current.token = Token.INDENT
-						current.indent = len(lexeme) 
+						indent = len(lexeme)
 						isIndent = False 
 					elif isLetter: 
 						current.token = Token.ID
 						isLetter = False 
 					current.lexeme = lexeme 
+					current.indent = indent 
 					current.next = Lex()
 					current = current.next
 				current.token = Token.NEWLINE
 				current.lexeme = "\n"
+				indent = 0 
+				current.indent = indent 
 				current.next = Lex() 
 				current = current.next 
 				lexeme = ""
@@ -121,17 +127,19 @@ def lex(filename):
 						isNumber = False
 					elif isIndent: 
 						current.token = Token.INDENT
-						current.indent = len(lexeme) 
+						indent = len(lexeme) 
 						isIndent = False
 					else: 
 						current.token = Token.ID
 						isLetter = False 
 					current.lexeme = lexeme 
+					current.indent = indent 
 					current.next = Lex() 
 					current = current.next 
 				# Symbols can only be a single character long
 				current.token = Token.TERMINAL
 				current.lexeme = ch 
+				current.indent = indent 
 				current.next = Lex() 
 				current = current.next
 				lexeme = ""
@@ -146,9 +154,10 @@ def lex(filename):
 						isLetter = False
 					elif isIndent: 
 						current.token = Token.INDENT 
-						current.indent = len(lexeme) 
+						indent = len(lexeme) 
 						isIndent = False 
 					current.lexeme = lexeme 
+					current.indent = indent 
 					current.next = Lex() 
 					current = current.next 
 					lexeme = "" 
@@ -173,14 +182,31 @@ def lex_display_formatted(tokens):
 			print(node, end = " ")
 
 
+# Given the -indent flag, display the token and indent amount of each Lex object. 
+def lex_display_indent(tokens): 
+	for node in tokens:
+		if node.token == Token.INDENT: 
+			print("\t" * node.indent, end = "")
+			print(f"<{node.token}, {node.indent}>", end = " ") 
+		elif node.token == Token.NEWLINE: 
+			print("\n", end = "")
+		else: 
+			print(f"<{node.token}, {node.indent}>", end = " ")
+
+
 if __name__ == "__main__": 
 	if len(sys.argv) < 2 or len(sys.argv) > 3:
 		print("Usage: python lex.py <file.jg> <output mode>")
-		print("Output modes: -oneline, -format") 
+		print("Output modes: -oneline, -format, -indent") 
 	else: 
 		tokens = lex(sys.argv[1]) 
-		if len(sys.argv) == 3 and sys.argv[2] == "-oneline":
-			lex_display_oneline(tokens) 
+		if len(sys.argv) == 3: 
+			if sys.argv[2] == "-oneline":
+				lex_display_oneline(tokens)
+			elif sys.argv[2] == "-indent":
+				lex_display_indent(tokens) 
+			else: 
+				lex_display_formatted(tokens)
 		else: 
 			lex_display_formatted(tokens)
 		print("\n")
