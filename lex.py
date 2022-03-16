@@ -161,7 +161,17 @@ def lex(filename):
 					current.next = Lex() 
 					current = current.next 
 					lexeme = "" 
-			ch = f.read(1) 
+			ch = f.read(1)
+	if isNumber: 
+		current.token = Token.NUMBER
+	elif isLetter: 
+		current.token = Token.ID 
+	elif isIndent: 
+		current.token = Token.INDENT
+		indent = len(indent) 
+	current.lexeme = lexeme 
+	current.indent = indent 
+	current.next = None 
 	return head
 
 
