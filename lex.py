@@ -7,7 +7,8 @@ class Token(enum.Enum):
 	NUMBER = "number"
 	TERMINAL = "terminal"
 	INDENT = "indent"
-	NEWLINE = "newline" 
+	NEWLINE = "newline"
+	PARAMETER = "parameter"
 
 	def __str__(self): 
 		return str(self.value) 
