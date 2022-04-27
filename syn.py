@@ -2,28 +2,28 @@ import sys
 from lex import *
 
 
-# Note: iteration needs to be done keeping track of the previously-sent node instead of the 
-# next node to send. This is because the current node to send may be updated in the logic for
-# distinguishing blocks between other commands. 
-class CommandIterator: 
-	def __init__(self, command):
-		self.command = command
-		self.previous = None 
-
-
-	def __next__(self): 
-		if self.previous is None: 
-			self.previous = self.command 
-			return self.command
-		else: 
-			if self.previous.next is None:
-				raise StopIteration 
-			else: 
-				self.previous = self.previous.next
-				return self.previous 
-
-
 class Command: 
+	# Note: iteration needs to be done keeping track of the previously-sent node instead of the 
+	# next node to send. This is because the current node to send may be updated in the logic for
+	# distinguishing blocks between other commands. 
+	class CommandIterator: 
+		def __init__(self, command):
+			self.command = command
+			self.previous = None 
+	
+	
+		def __next__(self): 
+			if self.previous is None: 
+				self.previous = self.command 
+				return self.command
+			else: 
+				if self.previous.next is None:
+					raise StopIteration 
+				else: 
+					self.previous = self.previous.next
+					return self.previous 
+
+
 	# Groups the tokens together in terms of commands. For now, a Command is a line of code, or a block
 	# containing other lines of codes/more blocks. 
 	def group(tokens, display_mode = "-none"): 
@@ -42,7 +42,7 @@ class Command:
 				print(command)
 			
 		# Now, each node is grouped into commands. If the next line after a command is indented, 
-		# then this command is a block. Adjust the commands so blocks are considered. .
+		# then this command is a block. Adjust the commands so blocks are considered.
 		for command in command_head:
 			if command.is_block():
 				command.set_block() 
@@ -126,7 +126,7 @@ class Command:
 
 	
 	def __iter__(self): 
-		return CommandIterator(self)
+		return Command.CommandIterator(self)
 
 
 	def __getitem__(self, key): 
@@ -194,12 +194,34 @@ class Function:
 				out += node.lexeme + " "
 			else: 
 				out += str(node) + " "
-		return out
+		return out[:-1]
+
+
+	def __repr__(self): 
+		return self.__str__()
+
+
+class Reduction: 
+	def __init__(self, production): 
+		self.production = production
+
+		# A list of a list of reductions that must be completed sequentially. 
+		# An index represents a list of possible reductions that could occur to yield a parameter. 
+		self.parameters = []
+	
+	
+	def __str__(self):
+		return "{" + str(self.production) + "|params=" + str(self.parameters) + "}"
+
+	
+	def __repr__(self): 
+		return str(self) 
 
 
 def syn(tokens, display_mode = "-none"): 
 	commands = Command.group(tokens, display_mode)
-	productions = [] 
+	
+	productions = {} # key is the type, value is the production
 	for command in commands: 
 		if command[0].lexeme == "func": 
 			# This is a function, so re-contextualize the parts of the function. 
@@ -222,10 +244,87 @@ def syn(tokens, display_mode = "-none"):
 					func.append(current) 
 					previous = current 
 					current = current.next
-			productions.append(func) 
+			if func.return_type not in productions: 
+				productions[func.return_type] = [] 
+			productions[func.return_type].append(func)
+
 	if display_mode == "-productions":
-		for production in productions:
-			print(" ", production) 
+		for return_type, return_list in productions.items():
+			for production in return_list: 
+				print(" ", production)
+
+	for command in commands: 
+		if not (isinstance(command.head, Lex) and (command.head.lexeme == 'func' or command.head.lexeme == 'block')): 
+			print("Checking:", command)
+			valid_reductions = reduce_statement(productions, command.head)
+			print("\tReductions:", valid_reductions) 
+
+
+def reduce_statement(global_productions, head_token): 
+	valid_reductions = []
+	for production in global_productions[None]: 
+		result = try_reduce(head_token, production, True, global_productions)
+		if result is not None: # it's valid 
+			valid_reductions.append(result) 
+	return valid_reductions
+
+
+def try_reduce(head_token, production, statement, global_productions): 
+	current_token = head_token 
+	production_node = production.head 
+	reduction = Reduction(production) 
+	while current_token is not None and current_token.lexeme != ")" and production_node is not None: 
+		if isinstance(production_node, Parameter):
+			if current_token.lexeme == "(": # we're reducing to something else 
+				current_token = current_token.next 
+				reduction.parameters.append([])
+				if production_node.type in global_productions: # the return type is something a production yields 
+					for possible_production in global_productions[production_node.type]: 
+						parameter_reduction = try_reduce(current_token, possible_production, False, global_productions)
+						if parameter_reduction is not None: 
+							reduction.parameters[-1].append(possible_production)
+					while current_token.lexeme != ")": # TODO: does not support nested parenthesis 
+						current_token = current_token.next 
+					current_token = current_token.next 
+					production_node = production_node.next 
+				elif production_node.type == "identifier": 
+					if current_token.token == Token.ID: 
+						current_token = current_token.next 
+						production_node = production_node.next 
+					else: 
+						return None
+				else:
+					print("Return type not recognized:", production_node.type) 
+			else: # this is a parameter, but the next node alone must be the ENTIRE reduction. 
+				if current_token.token == Token.ID: 
+					# "ID" is basically a wildcard, it can be any type at runtime. 
+					current_token = current_token.next 
+					production_node = production_node.next 
+				elif current_token.token == Token.NUMBER and production_node.type == "int": 
+					# It's expecting a number and the current token is a number 
+					current_token = current_token.next 
+					production_node = production_node.next 
+				else: 
+					# The current token is something the parameter won't accept.
+					return None 
+		else: # it's a keyword 
+			if current_token.lexeme != production_node.lexeme: 
+				# they don't equal, so the production isn't valid.
+				return None 
+			else: 
+				current_token = current_token.next
+				production_node = production_node.next 
+	
+	if current_token is not None and current_token.lexeme == ")": 
+		if statement: 
+			return None # throw error, unmatched parenthesis
+		else: 
+			return reduction
+	else: 
+		if current_token == None and production_node == None: 
+			return reduction
+		else: 
+			return None 
 
 
 if __name__ == "__main__": 
@@ -238,8 +337,10 @@ if __name__ == "__main__":
 		else: 
 			display_mode = "-blocks"
 
-		if display_mode not in ["-commands", "-blocks", "-productions"]:
+		display_modes = ["-commands", "-blocks", "-productions"] 
+		if display_mode not in display_modes:
 			print("Unrecognized display mode:", display_mode)
+			print("Valid display modes:", display_modes) 
 		else: 
 			tokens = lex(sys.argv[2])
 			syn(tokens, display_mode) 
