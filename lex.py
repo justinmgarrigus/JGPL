@@ -34,14 +34,23 @@ class Lex:
 		self.indent = indent
 		self.next = None
 
-	def __str__(self): 
+
+	def str(self, raw=False): 
 		if self.token == Token.INDENT:
 			lex_str = str(self.indent) 
 		elif self.token == Token.NEWLINE: 
 			lex_str = "\\n" 
 		else: 
 			lex_str = self.lexeme 
-		return f"<{self.token}, {lex_str}>"
+		
+		if raw: 
+			return lex_str
+		else: 
+			return f"<{self.token}, {lex_str}>"
+
+	def __str__(self):
+		return self.str() 
+
 
 	def __iter__(self): 
 		return NodeIterator(self) 
