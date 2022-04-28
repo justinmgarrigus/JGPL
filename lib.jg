@@ -1,0 +1,77 @@
+func int: type
+	return int
+
+func <type var_type> <identifier id>:
+	~INSERT @id, @var_type
+
+func <identifier id> = <int val>: 
+	~ASSIGN @id, @val
+
+func <type var_type> <identifier id> = <int val>:
+	~INSERT @id, @var_type 
+	~ASSIGN @id, @val
+
+func <int var1> + <int var2>: int 
+	int temp 
+	~IADD temp, @var1, @var2
+	return temp 
+	
+func <int var1> - <int var2>: int 
+	int temp 
+	~ISUB temp, @var1, @var2 
+	return temp 
+	
+func <int var1> gt <int var2>: bool 
+	int temp 
+	~GT temp, var1, var2
+	return temp 
+	
+func <int var1> lt <int var2>: bool 
+	int temp 
+	~LT temp, var1, var2
+	return temp 
+	
+func <int var1> eq <int var2>: bool 
+	int temp 
+	~EQ temp, var1, var2
+	return temp
+
+func <int var1> ge <int var2>: bool 
+	int temp 
+	~GE temp, var1, var2
+	return temp 
+	
+func <int var1> le <int var2>: bool 
+	int temp 
+	~LE temp, var1, var2
+	return temp 
+	
+func <int var1> ne <int var2>: bool 
+	int temp 
+	~NE temp, var1, var2
+	return temp
+
+block if <bool b>: 
+	~BREQ b, 0, if_end
+	~EXCON
+	~LABEL if_end
+
+func int input: int
+	int temp
+	~IINPUT temp
+	return temp
+	
+block increase <identifier for_id> from <int start> to <int end> by <int incr>: 
+	~ASSIGN @for_id, @start 
+	~LABEL start_loop
+	~BRGE @for_id, end, end_loop
+	~EXCON
+	~IADD @for_id, @for_id, @incr 
+	~BR start_loop 
+	~LABEL end_loop
+
+func display <int val>: 
+	~PRINT @val
+
+func display <string val>: 
+	~PRINT @val 

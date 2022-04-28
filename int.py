@@ -235,8 +235,10 @@ class Code:
 
 
 		def execute(self): 
-			value = variables[self.var_name].value if self.var_name_indirect else self.var_name 
-			print(value)
+			value = variables[self.var_name].value if self.var_name_indirect else self.var_name
+			if isinstance(value, str) and '\\n' in value: 
+				value = value.replace('\\n', '\n')
+			print(value, end="")
 
 
 	class ExecuteContentsCondition: 

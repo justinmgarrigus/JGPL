@@ -435,7 +435,7 @@ def try_reduce(head_token, production, statement, global_productions):
 					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 
 					production_node = production_node.next 
-				elif current_token.token == Token.NUMBER and production_node.type == "int": 
+				elif (current_token.token == Token.NUMBER and production_node.type == "int") or (current_token.token == Token.STRING and production_node.type == "string"): 
 					# It's expecting a number and the current token is a number 
 					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 
@@ -464,19 +464,20 @@ def try_reduce(head_token, production, statement, global_productions):
 
 
 if __name__ == "__main__": 
-	if len(sys.argv) < 3 or len(sys.argv) > 4:
-		print("Usage: python syn.py lex.py <file.jg> <output mode>")
+	if len(sys.argv) < 3:
+		print("Usage: python syn.py lex.py <file.jg> <optional: file.jg> <...> <output mode>")
 		print("Output modes: -commands, -blocks, -productions, -code")  
 	else: 
-		if len(sys.argv) == 4:
-			display_mode = sys.argv[3] 
-		else: 
-			display_mode = ""
+		display_mode = sys.argv[-1] 
+		if display_mode[0] != "-":
+			display_mode = "" 
 
 		display_modes = ["-commands", "-blocks", "-productions", "-code"] 
 		if len(display_mode) > 0 and display_mode not in display_modes:
 			print("Unrecognized display mode:", display_mode)
 			print("Valid display modes:", display_modes) 
 		else: 
-			tokens = lex(sys.argv[2])
+			if len(display_mode) == 0: files = sys.argv[2:]
+			else: files = sys.argv[2:-1]
+			tokens = lex(files)
 			syn(tokens, display_mode) 

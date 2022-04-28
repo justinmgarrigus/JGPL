@@ -1,55 +1,9 @@
-func int: type
-	return int
-
-func <type var_type> <identifier id>:
-	~INSERT @id, @var_type
-
-func <identifier id> = <int val>: 
-	~ASSIGN @id, @val
-
-func <type var_type> <identifier id> = <int val>:
-	~INSERT @id, @var_type 
-	~ASSIGN @id, @val
-
-func int input: int
-	int temp
-	~IINPUT temp
-	return temp
-	
-func <int var1> + <int var2>: int 
-	int temp 
-	~IADD temp, @var1, @var2
-	return temp 
-	
-func <int var1> - <int var2>: int 
-	int temp 
-	~ISUB temp, @var1, @var2 
-	return temp 
-	
-func <int var1> gt <int var2>: bool 
-	int temp 
-	~GT temp, var1, var2
-	return temp 
-	
-func <int var1> lt <int var2>: bool 
-	int temp 
-	~LT temp, var1, var2
-	return temp 
-	
-func <int var1> eq <int var2>: bool 
-	int temp 
-	~EQ temp, var1, var2
-	return temp 
-	
-block if <bool b>: 
-	~BREQ b, 0, if_end
-	~EXCON
-	~LABEL if_end 
-	
-func display <int val>: 
-	~PRINT @val
-
 main: 
+	display "Type a number: "
 	int i = (int input) 
-	if (i eq 0):
+	if (i ge 0):
 		display i
+		display " is a positive number!\n"
+	if (i lt 0): 
+		display i
+		display " is a negative number!\n"
