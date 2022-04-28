@@ -1,0 +1,49 @@
+func int: type
+	return int
+
+func <type var_type> <identifier id>:
+	~INSERT @id, @var_type
+
+func <identifier id> = <int val>: 
+	~ASSIGN @id, @val
+
+func <type var_type> <identifier id> = <int val>:
+	~INSERT @id, @var_type 
+	~ASSIGN @id, @val
+
+func int input: int
+	int temp
+	~IINPUT temp
+	return temp
+	
+func <int var1> + <int var2>: int 
+	int temp 
+	~IADD temp, @var1, @var2
+	return temp 
+	
+func <int var1> - <int var2>: int 
+	int temp 
+	~ISUB temp, @var1, @var2 
+	return temp 
+	
+block if <int id> == <int val>: 
+	int temp = (id - val)
+	~EXCONZERO temp
+	
+block increase <identifier for_id> from <int start> to <int end>: 
+	~ASSIGN @for_id, @start 
+	~LABEL start_loop
+	~BRGE @for_id, end, end_loop
+	~EXCON
+	~IADD @for_id, @for_id, 1 
+	~BR start_loop 
+	~LABEL end_loop
+	
+func display <int val>: 
+	~PRINT @val
+
+main: 
+	int start = (int input) 
+	int end = (int input) 
+	increase index from start to end: 
+		display index

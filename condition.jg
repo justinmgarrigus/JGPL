@@ -1,0 +1,39 @@
+func int: type
+	return int
+
+func <type var_type> <identifier id>:
+	~INSERT @id, @var_type
+
+func <identifier id> = <int val>: 
+	~ASSIGN @id, @val
+
+func <type var_type> <identifier id> = <int val>:
+	~INSERT @id, @var_type 
+	~ASSIGN @id, @val
+
+func int input: int
+	int temp
+	~IINPUT temp
+	return temp
+	
+func <int var1> + <int var2>: int 
+	int temp 
+	~IADD temp, @var1, @var2
+	return temp 
+	
+func <int var1> - <int var2>: int 
+	int temp 
+	~ISUB temp, @var1, @var2 
+	return temp 
+	
+block if <int id> == <int val>: 
+	int temp = (id - val)
+	~EXCONZERO temp
+	
+func display <int val>: 
+	~PRINT @val
+
+main: 
+	int i = (int input) 
+	if i == 0:
+		display i

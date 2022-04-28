@@ -128,6 +128,15 @@ class Command:
 		self.contents = self.next 
 		self.next = current.next
 		current.next = None
+
+		# Remove colon from the end if we're not a function 
+		if self.head.lexeme != 'func' and self.head.lexeme != 'block': 
+			prev_token = self.head 
+			current_token = prev_token.next 
+			while current_token.next != None:
+				prev_token = current_token
+				current_token = current_token.next 
+			prev_token.next = None
 	
 
 	def str(self, raw = False, recursive = False, include_indent_number = False): 
@@ -266,17 +275,20 @@ class Function:
 class Reduction:
 	class PassedParameter: 
 		# Alias is the name of the variable inside the next function as a string. 
-		# Value is either a string (another variable to copy) or a Reduction (a function to invoke)
-		def __init__(self, alias, value): 
+		# Value is either a string (another variable to copy) or a Reduction (a function to invoke).
+		# Var_type is the type of the variable inside the next function as a string. 
+		def __init__(self, alias, value, var_type): 
 			self.value = value 
 			self.alias = alias 
+			self.var_type = var_type
+			if not isinstance(self.value, Reduction): self.code_value = '@' + self.value if (self.var_type == 'int' and not self.value.isnumeric()) else self.value
 
 
 		def code(self):
 			if isinstance(self.value, Reduction): 
 				return self.value.code(is_parameter=True) + f"ASSIGN {self.alias}, @result"
 			else: 
-				return f"ASSIGN {self.alias}, {self.value}" # self.value must already be a string 
+				return f"ASSIGN {self.alias}, {self.code_value}" # self.value must already be a string 
 
 
 		def __str__(self): 
@@ -349,7 +361,7 @@ def syn(tokens, display_mode = "-none"):
 						reduction = r 
 				code += reduction.code() 
 			else: 
-				print("ERROR: no valid reductions")
+				print("ERROR: no valid reductions", current_command)
 
 		if current_command.contents is not None: 
 			if not Function.is_function(current_command) and current_command[0].lexeme != 'main': 
@@ -395,14 +407,14 @@ def try_reduce(head_token, production, statement, global_productions):
 	reduction = Reduction(production)
 	while current_token is not None and current_token.lexeme != ")" and production_node is not None: 
 		if isinstance(production_node, Parameter):
+			reduction.parameters.append([]) 
 			if current_token.lexeme == "(": # we're reducing to something else 
 				current_token = current_token.next 
-				reduction.parameters.append([]) # adding a new parameter 
 				if production_node.type in global_productions: # the return type is something a production yields 
 					for possible_production in global_productions[production_node.type]: 
 						parameter_reduction = try_reduce(current_token, possible_production, False, global_productions)
 						if parameter_reduction is not None:
-							reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, parameter_reduction))
+							reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, parameter_reduction, production_node.type))
 					while current_token.lexeme != ")": # TODO: does not support nested parenthesis 
 						current_token = current_token.next 
 					current_token = current_token.next 
@@ -410,23 +422,22 @@ def try_reduce(head_token, production, statement, global_productions):
 				elif production_node.type == "identifier": 
 					if current_token.token == Token.ID: 
 						print("ID Found!")
-						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, '"' + current_token.lexeme + '"')) 
+						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, '"' + current_token.lexeme + '"', production_node.type)) 
 						current_token = current_token.next
 						production_node = production_node.next 
-					else: 
+					else:
 						return None
 				else:
 					print("Return type not recognized:", production_node.type) 
 			else: # this is a parameter, but the next node alone must be the ENTIRE reduction. 
-				reduction.parameters.append([]) 
 				if current_token.token == Token.ID: 
 					# "ID" is basically a wildcard, it can be any type at runtime. 
-					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme))
+					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 
 					production_node = production_node.next 
 				elif current_token.token == Token.NUMBER and production_node.type == "int": 
 					# It's expecting a number and the current token is a number 
-					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme))
+					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 
 					production_node = production_node.next 
 				else: 
