@@ -26,14 +26,30 @@ func <int var1> - <int var2>: int
 	~ISUB temp, @var1, @var2 
 	return temp 
 	
-block if <int id> == <int val>: 
-	int temp = (id - val)
-	~EXCONZERO temp
+func <int var1> gt <int var2>: bool 
+	int temp 
+	~GT temp, var1, var2
+	return temp 
+	
+func <int var1> lt <int var2>: bool 
+	int temp 
+	~LT temp, var1, var2
+	return temp 
+	
+func <int var1> eq <int var2>: bool 
+	int temp 
+	~EQ temp, var1, var2
+	return temp 
+	
+block if <bool b>: 
+	~BREQ b, 0, if_end
+	~EXCON
+	~LABEL if_end 
 	
 func display <int val>: 
 	~PRINT @val
 
 main: 
 	int i = (int input) 
-	if i == 0:
+	if (i eq 0):
 		display i

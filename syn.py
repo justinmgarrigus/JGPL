@@ -281,7 +281,7 @@ class Reduction:
 			self.value = value 
 			self.alias = alias 
 			self.var_type = var_type
-			if not isinstance(self.value, Reduction): self.code_value = '@' + self.value if (self.var_type == 'int' and not self.value.isnumeric()) else self.value
+			if not isinstance(self.value, Reduction): self.code_value = '@' + self.value if ((self.var_type == 'int' and not self.value.isnumeric()) or self.var_type == 'bool') else self.value
 
 
 		def code(self):

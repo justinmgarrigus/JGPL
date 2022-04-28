@@ -26,9 +26,23 @@ func <int var1> - <int var2>: int
 	~ISUB temp, @var1, @var2 
 	return temp 
 	
-block if <int id> == <int val>: 
-	int temp = (id - val)
-	~EXCONZERO temp
+func <int var1> gt <int var2>: bool 
+	int temp 
+	~GT temp, var1, var2
+	return temp 
+	
+func <int var1> lt <int var2>: bool 
+	int temp 
+	~LT temp, var1, var2
+	return temp 
+	
+func <int var1> eq <int var2>: bool 
+	int temp 
+	~EQ temp, var1, var2
+	return temp 
+	
+block if <int arg1> <bool b> <int arg2>: 
+	~EXCON b
 	
 block increase <identifier for_id> from <int start> to <int end>: 
 	~ASSIGN @for_id, @start 
@@ -47,3 +61,5 @@ main:
 	int end = (int input) 
 	increase index from start to end: 
 		display index
+		
+		

@@ -201,7 +201,7 @@ class Code:
 			self.arg1_indirect = parts[1][0] == '@' 
 			self.arg1 = parts[1][1:] if self.arg1_indirect else parts[1] 
 			self.arg2_indirect = parts[2][0] == '@' 
-			self.arg2 = parts[2][1:] if self.arg2_indirect else parts[2] 
+			self.arg3 = parts[2][1:] if self.arg2_indirect else parts[2] 
 
 
 		def __str__(self): 
@@ -239,14 +239,14 @@ class Code:
 			print(value)
 
 
-	class ExecuteContentsZero: 
-		def __init__(self, args): 
-			self.var_name_indirect = args[0] == '@' 
-			self.var_name = args[1:] if self.var_name_indirect else args
+	class ExecuteContentsCondition: 
+		def __init__(self, args, cond): 
+			self.var_name = args
+			self.cond = cond 
 
 
 		def __str__(self): 
-			return "EXCONZERO " + ('@' if self.var_name_indirect else "") + self.var_name 
+			return f"EXCON{self.cond} {self.var_name}"
 
 
 		def __repr__(self): 
@@ -257,18 +257,13 @@ class Code:
 			global pc
 			global progress_program_counter 
 
-			if self.var_name_indirect: 
-				var_name = variables[self.var_name].value
-			else:
-				var_name = self.var_name 
+			var_name = Code.var_at(self.var_name) 
 			
-			if variables[var_name].value == 0:
+			if Code.condition(variables[var_name].value, self.cond):
 				blocks.append((program[stack[-1][0]].contents_end, pc))
-				#print("Branching", pc, "to new pc", program[stack[-1][0]].contents_start)
 				pc = program[stack[-1][0]].contents_start + 1 
 				progress_program_counter = False 
 			else: 
-				#print("Branching", pc, "to new pc", program[stack[-1][0]].contents_end)
 				pc = program[stack[-1][0]].contents_end
 
 
@@ -337,18 +332,17 @@ class Code:
 			pc = labels[stack[-1][1]][self.label]
 
 
-	class BranchGreaterEqual:
-		def __init__(self, args): 
+	class BranchConditional:
+		def __init__(self, args, cond): 
 			parts = args.split(', ') 
-			self.arg1_indirect = parts[0][0] == '@'
-			self.arg1 = parts[0][1:] if self.arg1_indirect else parts[0] 
-			self.arg2_indirect = parts[1][0] == '@' 
-			self.arg2 = parts[1][1:] if self.arg2_indirect else parts[1] 
+			self.arg1 = parts[0] 
+			self.arg2 = parts[1] 
 			self.label = parts[2]
+			self.cond = cond 
 
 
 		def __str__(self): 
-			return "BRGE " + ('@' if self.arg1_indirect else "") + self.arg1 + ", " + ('@' if self.arg2_indirect else "") + self.arg2 + ", " + self.label 
+			return f"BR{self.cond.upper()} {self.arg1}, {self.arg2}, {self.label}" 
 
 		
 		def __repr__(self): 
@@ -357,12 +351,74 @@ class Code:
 
 		def execute(self): 
 			global pc 
-			arg1 = variables[self.arg1].value if self.arg1_indirect else self.arg1
-			arg2 = variables[self.arg2].value if self.arg2_indirect else self.arg2 
-			#print("BRGE :::", arg1, arg2, variables[arg1], variables[arg2])
-			if variables[arg1].value >= variables[arg2].value: 
+			arg1 = Code.int_value_of(self.arg1) 
+			arg2 = Code.int_value_of(self.arg2) 
+			#print(self.arg1, self.arg2, arg1, arg2, self.cond, Code.condition(arg1, arg2, self.cond)) 
+			if Code.condition(arg1, arg2, self.cond): 
+				#print("Branch taken:", pc, labels[stack[-1][1]][self.label])
 				pc = labels[stack[-1][1]][self.label] 
 
+
+	class Compare: 
+		def __init__(self, args, sign): 
+			parts = args.split(', ') 
+			self.result = parts[0] 
+			self.arg1 = parts[1] 
+			self.arg2 = parts[2]
+			self.sign = sign 
+
+
+		def __str__(self): 
+			return f"{self.sign.upper()} {self.result}, {self.arg1}, {self.arg2}"
+
+
+		def __repr__(self): 
+			return str(self) 
+
+
+		def execute(self):
+			result = Code.var_at(self.result) 
+			arg1 = Code.int_value_of(self.arg1) 
+			arg2 = Code.int_value_of(self.arg2) 
+			boolean = Code.condition(arg1, arg2, self.sign) 
+			variables[result].value = 1 if boolean else 0
+			variables[result].type = "bool"
+			#print(self.arg1, self.arg2, arg1, arg2, self.result, result, boolean, self.sign) 
+
+
+	# Returns the argument interpreted as an int. Leading @s represent indirection. 
+	def int_value_of(arg): 
+		#print("int_value_of(",arg,")")
+		if isinstance(arg, int): 
+			return arg 
+		
+		arg = Code.var_at(arg) 
+		#print("var_at(",arg,")")
+
+		if not arg.isnumeric():
+			arg = variables[arg].value 
+		#print("int(",arg,")")
+		return int(arg) 
+
+
+	# Returns the variable pointed to by the argument. If the argument has no indirection, returns itself. 
+	def var_at(arg): 
+		while arg[0] == '@':
+			next_arg = variables[arg.replace('@', '')].value
+			arg = '@' * (arg.count('@') - 1) + next_arg
+		return arg
+
+
+	def condition(arg1, arg2, sign):
+		#print("Condition:", arg1, type(arg1), arg2, type(arg2), sign, arg1 == arg2)
+		if sign == 'gt':   return arg1 > arg2
+		elif sign == 'lt': return arg1 < arg2 
+		elif sign == 'eq': return arg1 == arg2 
+		elif sign == 'ge': return arg1 >= arg2 
+		elif sign == 'le': return arg1 <= arg2 
+		elif sign == 'ne': return arg1 != arg2 
+		else: print("UNKNOWN OPERATION:", sign) 
+	
 
 	# Given a list of string objects, returns an associated list of Code objects 
 	def parse(lines): 
@@ -393,8 +449,8 @@ class Code:
 					program.append(Code.Copy(arguments))
 				elif command == "BR":
 					program.append(Code.Branch(arguments)) 
-				elif command == "BRGE": 
-					program.append(Code.BranchGreaterEqual(arguments)) 
+				elif command.startswith("BR"): 
+					program.append(Code.BranchConditional(arguments, command[2:].lower())) 
 				elif command == "IINPUT":
 					program.append(Code.Input(arguments))
 				elif command == "IADD": 
@@ -403,10 +459,12 @@ class Code:
 					program.append(Code.Sub(arguments)) 
 				elif command == "PRINT":
 					program.append(Code.Print(arguments))
-				elif command == "EXCONZERO":
-					program.append(Code.ExecuteContentsZero(arguments))
 				elif command == "EXCON":
-					program.append(Code.ExecuteContents(arguments)) 
+					program.append(Code.ExecuteContents(arguments))
+				elif command[:5] == "EXCON":
+					program.append(Code.ExecuteContentsCondition(arguments, command[5:].lower())) 
+				elif command in ['GT', 'LT', 'EQ', 'GE', 'LE', 'NE']:
+					program.append(Code.Compare(arguments, command.lower()))
 				elif command == "ENTERBLOCK":
 					block.append(len(program) - 1) # the index of the head of the block
 				elif command == "EXITBLOCK": 
