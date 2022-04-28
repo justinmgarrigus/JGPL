@@ -2,18 +2,18 @@ func int: type
 	return int
 
 func <type var_type> <identifier id>:
-	~INSERT id, type
+	~INSERT @id, @var_type
 
 func <identifier id> = <int val>: 
-	~ASSIGN id, val
+	~ASSIGN @id, @val
 
 func <type var_type> <identifier id> = <int val>:
-	var_type id
-	id = val
+	~INSERT @id, @var_type 
+	~ASSIGN @id, @val
 
 func <int var1> + <int var2>: int 
 	int temp 
-	~IADD temp, var1, var2
+	~IADD temp, @var1, @var2
 	return temp 
 
 func int input: int
@@ -22,11 +22,12 @@ func int input: int
 	return temp
 	
 func display <int val>: 
-	~PRINT val
+	~PRINT @val
 
-int a = 5 
-int b = 7 
-int c = (int input)
-int d = (a + b)
-d = (d + c)
-display d
+main: 
+	int a = 5 
+	int b = 7 
+	int c = (int input)
+	int d = (a + b)
+	d = (d + c)
+	display d

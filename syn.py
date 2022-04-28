@@ -133,7 +133,8 @@ class Command:
 	def str(self, raw = False, recursive = False, include_indent_number = False): 
 		out = (str(self.head.indent) + ": " if include_indent_number else "")
 		for node in self.head:
-			if len(out) >= 2 and out[-2:] == ', ': out = out[:-3] + ", " 
+			if len(out) >= 2 and out[-2:] == ', ': out = out[:-3] + ", "
+			if len(out) >= 2 and out[-2:] == '@ ': out = out[:-1]
 			out += node.str(raw) + " "
 		if recursive and self.contents is not None:
 			contents_str = "" 
@@ -273,7 +274,7 @@ class Reduction:
 
 		def code(self):
 			if isinstance(self.value, Reduction): 
-				return self.value.code(is_parameter=True) + f"ASSIGN {self.alias}, result"
+				return self.value.code(is_parameter=True) + f"ASSIGN {self.alias}, @result"
 			else: 
 				return f"ASSIGN {self.alias}, {self.value}" # self.value must already be a string 
 
@@ -336,15 +337,22 @@ def syn(tokens, display_mode = "-none"):
 			return_specified = True 
 		elif current_command[0].lexeme == '~': # This is a terminal command, which can be translated directly.  
 			code += current_command.str(raw=True)[2:] + "\n"
+		elif current_command[0].lexeme == 'main': 
+			code += "main:\n" 
 		else: 
 			valid_reductions = reduce_statement(productions, current_command.head) 
 			if len(valid_reductions) > 0: 
-				code += valid_reductions[0].code() 
+				# find reduction with least number of parameters 
+				reduction = valid_reductions[0]
+				for r in valid_reductions[1:]:
+					if len(r.parameters) < len(reduction.parameters):
+						reduction = r 
+				code += reduction.code() 
 			else: 
 				print("ERROR: no valid reductions")
 
 		if current_command.contents is not None: 
-			if not Function.is_function(current_command): 
+			if not Function.is_function(current_command) and current_command[0].lexeme != 'main': 
 				code += "ENTERBLOCK\n"	
 			stack.append(current_command) 
 			current_command = current_command.contents
@@ -356,7 +364,7 @@ def syn(tokens, display_mode = "-none"):
 				if Function.is_function(current_command): 
 					if not return_specified: 
 						code += "RETURN\n"
-				else: 
+				elif current_command[0].lexeme != 'main': 
 					code += "EXITBLOCK\n"
 			current_command = current_command.next
 
@@ -373,11 +381,11 @@ def syn(tokens, display_mode = "-none"):
 
 
 def reduce_statement(global_productions, head_token): 
-	valid_reductions = []
+	valid_reductions = [] 
 	for production in global_productions[None]: 
 		result = try_reduce(head_token, production, True, global_productions)
 		if result is not None: # it's valid 
-			valid_reductions.append(result) 
+			valid_reductions.append(result)
 	return valid_reductions
 
 
@@ -401,7 +409,8 @@ def try_reduce(head_token, production, statement, global_productions):
 					production_node = production_node.next 
 				elif production_node.type == "identifier": 
 					if current_token.token == Token.ID: 
-						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme)) 
+						print("ID Found!")
+						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, '"' + current_token.lexeme + '"')) 
 						current_token = current_token.next
 						production_node = production_node.next 
 					else: 
@@ -451,10 +460,10 @@ if __name__ == "__main__":
 		if len(sys.argv) == 4:
 			display_mode = sys.argv[3] 
 		else: 
-			display_mode = "-code"
+			display_mode = ""
 
 		display_modes = ["-commands", "-blocks", "-productions", "-code"] 
-		if display_mode not in display_modes:
+		if len(display_mode) > 0 and display_mode not in display_modes:
 			print("Unrecognized display mode:", display_mode)
 			print("Valid display modes:", display_modes) 
 		else: 
