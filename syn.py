@@ -192,7 +192,12 @@ class Parameter:
 	# declaration. 
 	def __init__(self, start_bracket): 
 		self.type = start_bracket.next.lexeme
-		self.alias = start_bracket.next.next.lexeme
+		if start_bracket.next.next.lexeme == '*':
+			self.indirect = True
+			self.alias = start_bracket.next.next.next.lexeme
+		else: 
+			self.indirect = False 
+			self.alias = start_bracket.next.next.lexeme 
 		self.next = None 
 
 	
@@ -231,8 +236,11 @@ class Function:
 		previous = None 
 		while current is not None: 
 			if current.lexeme == "<":
-				func.append(Parameter(current))
-				current = current.next.next.next.next # skips <, type, alias, >
+				parameter = Parameter(current) 
+				func.append(parameter) 
+				if parameter.indirect: current = current.next.next.next.next.next # skips <, type, *, alias, >
+				else: current = current.next.next.next.next # skips <, type, alias, >
+				
 				previous = current 
 			elif current.lexeme == ":":
 				if current.next is not None: 
