@@ -140,10 +140,8 @@ class Code:
 	class Assign: 
 		def __init__(self, args): 
 			parts = args.split(', ') 
-			self.var_name_indirect = parts[0][0] == '@'
-			self.var_name = parts[0][1:] if self.var_name_indirect else parts[0] 
-			self.value_indirect = parts[1][0] == '@'
-			self.value = parts[1][1:] if self.value_indirect else parts[1] 
+			self.var_name = parts[0] 
+			self.value = ', '.join(parts[1:])
 			if self.value.isnumeric(): 
 				self.value = int(self.value)
 			
@@ -151,7 +149,7 @@ class Code:
 
 
 		def __str__(self):
-			return "ASSIGN " + ('@' if self.var_name_indirect else "") + self.var_name + ", " + ('@' if self.value_indirect else "") + str(self.value)
+			return f"ASSIGN {self.var_name}, {self.value}"
 
 
 		def __repr__(self): 
@@ -159,15 +157,8 @@ class Code:
 
 
 		def execute(self):
-			if self.value_indirect: 
-				value = variables[self.value].value
-			else:
-				value = self.value
-
-			if self.var_name_indirect: 
-				var_name = variables[self.var_name].value 
-			else: 
-				var_name = self.var_name 
+			var_name = Code.var_at(self.var_name) 
+			value = Code.var_at(self.value) 
 			
 			variables[var_name].value = value
 			if self.type is not None: 
@@ -196,16 +187,13 @@ class Code:
 	class Add: 
 		def __init__(self, args):	
 			parts = args.split(', ')
-			self.result_indirect = parts[0][0] == '@'
-			self.result = parts[0][1:] if self.result_indirect else parts[0] 
-			self.arg1_indirect = parts[1][0] == '@' 
-			self.arg1 = parts[1][1:] if self.arg1_indirect else parts[1] 
-			self.arg2_indirect = parts[2][0] == '@' 
-			self.arg2 = parts[2][1:] if self.arg2_indirect else parts[2] 
+			self.result = parts[0]
+			self.arg1 = parts[1] 
+			self.arg2 = parts[2] 
 
 
 		def __str__(self): 
-			return "ADD " + ('@' if self.result_indirect else '') + self.result + ", " + ('@' if self.arg1_indirect else '') + self.arg1 + ", " + ('@' if self.arg2_indirect else '') + self.arg2
+			return f"ADD {self.result}, {self.arg1}, {self.arg2}"
 
 
 		def __repr__(self): 
@@ -213,13 +201,10 @@ class Code:
 
 
 		def execute(self):
-			result = variables[self.result].value if self.result_indirect else self.result 
-			arg1 = variables[self.arg1].value if self.arg1_indirect else self.arg1 
-			arg2 = variables[self.arg2].value if self.arg2_indirect else self.arg2 
-			if isinstance(arg1, str) and arg1.isidentifier(): arg1 = variables[arg1].value
-			if isinstance(arg2, str) and arg2.isidentifier(): arg2 = variables[arg2].value
-			#print(self.arg1, arg1, self.arg2, arg2, self.result, result, variables[result])
-			variables[result].value = int(arg1) + int(arg2)
+			arg1 = Code.int_value_of(self.arg1) 
+			arg2 = Code.int_value_of(self.arg2)  
+			result = Code.var_at(self.result) 
+			variables[result].value = arg1 + arg2 
 
 
 	class Sub: 
@@ -419,6 +404,81 @@ class Code:
 			#print("Compare:", self.arg1, self.arg2, arg1, arg2, self.result, result, boolean, self.sign) 
 
 
+	class Object: 
+		counter = 0 
+
+		def __init__(self, args): 
+			self.result = args
+
+
+		def __str__(self): 
+			return f"OBJECT {self.result}" 
+
+
+		def __repr__(self): 
+			return str(self) 
+
+
+		def execute(self): 
+			result = Code.var_at(self.result) 
+			name = variables[result].type + '_' + str(Code.Object.counter) 
+			variables[name].value = {}
+			variables[result].value = name
+			Code.Object.counter += 1
+			#print("Object:", name, result, variables[name])
+
+
+	class Attribute: 
+		def __init__(self, args):
+			parts = args.split(', ')
+			self.obj = parts[0] 
+			self.var_name = parts[1] 
+			self.value = parts[2] 
+
+
+		def __str__(self): 
+			return f"ATTRIBUTE {self.obj}, {self.var_name}, {self.value}" 
+
+
+		def __repr__(self):
+			return str(self) 
+
+
+		def execute(self): 
+			obj = variables[Code.var_at(self.obj)].value 
+			var_name = Code.var_at(self.var_name) 
+			value = Code.var_at(self.value)
+			#print("Attribute test:", obj, var_name, value) 
+			variables[obj].value[var_name] = value 	
+			#print(obj, variables[obj].value)
+
+
+	class Retrieve: 
+		def __init__(self, args): 
+			parts = args.split(', ') 
+			self.result = parts[0] 
+			self.obj = parts[1] 
+			self.var_name = parts[2] 
+
+
+		def __str__(self): 
+			return f"RETRIEVE {self.result}, {self.obj}, {self.var_name}" 
+
+
+		def __repr__(self):
+			return str(self) 
+
+
+		def execute(self): 
+			result = Code.var_at(self.result) 
+			obj = variables[Code.var_at(self.obj)].value
+			var_name = Code.var_at(self.var_name) 
+			#print("Retrieve:", result, obj, var_name, variables[obj].value)
+			#print("All variables:", variables)
+			variables[result].value = variables[obj].value[var_name]
+			#print(obj, variables[obj].value) 
+
+
 	# Returns the argument interpreted as an int. Leading @s represent indirection. 
 	def int_value_of(arg): 
 		#print("int_value_of(",arg,")")
@@ -428,17 +488,21 @@ class Code:
 		arg = Code.var_at(arg) 
 		#print("var_at(",arg,")")
 
-		if not arg.isnumeric():
+		if isinstance(arg, str) and not arg.isnumeric():
 			arg = variables[arg].value 
 		#print("int(",arg,")")
 		return int(arg) 
 
 
 	# Returns the variable pointed to by the argument. If the argument has no indirection, returns itself. 
-	def var_at(arg): 
-		while arg[0] == '@':
-			next_arg = variables[arg.replace('@', '')].value
-			arg = '@' * (arg.count('@') - 1) + next_arg
+	def var_at(arg):
+		if isinstance(arg, str): 
+			while arg[0] == '@':
+				next_arg = variables[arg.replace('@', '')].value
+				if not isinstance(next_arg, str): 
+					arg = next_arg
+					break 
+				arg = '@' * (arg.count('@') - 1) + next_arg
 		return arg
 
 
@@ -496,6 +560,12 @@ class Code:
 					program.append(Code.ExecuteContents(arguments))
 				elif command[:5] == "EXCON":
 					program.append(Code.ExecuteContentsCondition(arguments, command[5:].lower())) 
+				elif command == 'OBJECT': 
+					program.append(Code.Object(arguments))
+				elif command == 'RETRIEVE':
+					program.append(Code.Retrieve(arguments)) 
+				elif command == 'ATTRIBUTE': 
+					program.append(Code.Attribute(arguments)) 
 				elif command in ['GT', 'LT', 'EQ', 'GE', 'LE', 'NE']:
 					program.append(Code.Compare(arguments, command.lower()))
 				elif command == "ENTERBLOCK":

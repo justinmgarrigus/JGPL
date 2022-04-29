@@ -251,7 +251,7 @@ class Function:
 				func.append(current) 
 				previous = current 
 				current = current.next
-		return func 	
+		return func
 
 	
 	def append(self, node): 
@@ -289,8 +289,15 @@ class Reduction:
 			self.value = value 
 			self.alias = alias 
 			self.var_type = var_type
-			if not isinstance(self.value, Reduction): self.code_value = '@' + self.value if ((self.var_type == 'int' and not self.value.isnumeric()) or self.var_type == 'bool') else self.value
-
+			if isinstance(self.value, str) and self.value.isidentifier():
+				# If we want to pass an identifier to a value type, we need to dereference it. 
+				if self.var_type in {'int', 'bool', 'value'}:
+					self.code_value = '@' + self.value 
+				else: 
+					self.code_value = self.value 
+				#self.code_value = '@' + self.value if ((self.var_type == 'int' and not self.value.isnumeric()) or self.var_type == 'bool' or self.var_type == 'value') else self.value
+			else: 
+				self.code_value = self.value
 
 		def code(self):
 			if isinstance(self.value, Reduction): 
@@ -322,11 +329,17 @@ class Reduction:
 	def __repr__(self): 
 		return str(self)
 
-	
+
+	# Returns True if we are "more preferrable" to execute than other_reduction, False if other_reduction is. 
+	def compare(self, other_reduction): 
+		return len(self.parameters) < len(other_reduction.parameters) 
+
+
 	# Turns us into a code representation 
 	# is_parameter: True if we are returning a value in "result", false if we are a standalone statement. 
 	def code(self, is_parameter=False):
 		code = "FUNC " + self.production.name + (", result" if is_parameter else "") + "\n" 
+		#print(code, self)
 		for parameter in self.parameters: 
 			if len(parameter) != 0: # TODO: need to resolve ambiguity 
 				pass 
@@ -343,13 +356,18 @@ def syn(tokens, display_mode = "-none"):
 	
 	code = "" 
 	productions = defaultdict(list) # key is the type, value is the production
+	type_casts = defaultdict(list) # key is the type, value is the list of types it converts 1-1 to
 	current_command = commands
 	stack = [] # read the data from top to bottom, turning it into code 
 	return_specified = False # Functions must have a return specified 
 	while current_command is not None: 
 		if Function.is_function(current_command): 
-			func = Function.create_function(current_command) 
-			productions[func.return_type].append(func)
+			func = Function.create_function(current_command)
+			if func.head == func.tail and isinstance(func.head, Parameter) and func.head.type != func.return_type: 
+				print("CAST FOUND:", func.head.type, "->", func.return_type) 
+				type_casts[func.head.type].append(func.return_type)
+			else: 
+				productions[func.return_type].append(func)
 			code += func.name + ":\n" 
 			return_specified = False 
 		elif current_command[0].lexeme == "return": 
@@ -362,13 +380,16 @@ def syn(tokens, display_mode = "-none"):
 		elif current_command[0].lexeme == 'main': 
 			code += "main:\n" 
 		else: 
-			valid_reductions = reduce_statement(productions, current_command.head) 
+			print("Reducing:", current_command)
+			valid_reductions = reduce_statement(productions, type_casts, current_command.head) 
+			print("Reductions yielded:", valid_reductions)
 			if len(valid_reductions) > 0: 
 				# find reduction with least number of parameters 
 				reduction = valid_reductions[0]
 				for r in valid_reductions[1:]:
-					if len(r.parameters) < len(reduction.parameters):
-						reduction = r 
+					if r.compare(reduction):
+						reduction = r # if True, then r is "more preferrable"  
+				print("Reduction taken:", reduction)
 				code += reduction.code() 
 			else: 
 				print("ERROR: no valid reductions", current_command)
@@ -402,16 +423,28 @@ def syn(tokens, display_mode = "-none"):
 	f.close() 
 
 
-def reduce_statement(global_productions, head_token): 
-	valid_reductions = [] 
+def reduce_statement(global_productions, type_casts, head_token): 
+	valid_reductions = []
 	for production in global_productions[None]: 
-		result = try_reduce(head_token, production, True, global_productions)
+		result = try_reduce(head_token, production, True, global_productions, type_casts)
 		if result is not None: # it's valid 
 			valid_reductions.append(result)
+	#print(valid_reductions)
 	return valid_reductions
 
 
-def try_reduce(head_token, production, statement, global_productions): 
+# type_casts: dictionary, key is the type, value is a list of types which are 1-1 convertable. 
+# eg: if var_type is 'int' and type_casts says that floats can be converted to ints, then returns all float functions and all int functions. 
+def production_list(global_productions, type_casts, var_type):
+	prod = [] 
+	for value in type_casts[var_type]:
+		prod.extend(global_productions[value])
+	prod.extend(global_productions[var_type])
+	return prod 
+
+
+def try_reduce(head_token, production, statement, global_productions, type_casts): 
+	print("Attempting to reduce by:", production)
 	current_token = head_token 
 	production_node = production.head 
 	reduction = Reduction(production)
@@ -421,17 +454,26 @@ def try_reduce(head_token, production, statement, global_productions):
 			if current_token.lexeme == "(": # we're reducing to something else 
 				current_token = current_token.next 
 				if production_node.type in global_productions: # the return type is something a production yields 
-					for possible_production in global_productions[production_node.type]: 
-						parameter_reduction = try_reduce(current_token, possible_production, False, global_productions)
+#					if production_node.type == 'value': 
+#						# values can apply to every production type 
+#						production_possibilities = [] 
+#						for return_type, production_list in global_productions.items(): 
+#							if return_type != None: 
+#								production_possibilities.extend(production_list) 
+#					else: 
+					#production_possibilities = global_productions[production_node.type] # + global_productions['value']
+
+					for possible_production in production_list(global_productions, type_casts, production_node.type): 
+						#print("Checking reduction:", production_node.type, possible_production.return_type, possible_production)
+						parameter_reduction = try_reduce(current_token, possible_production, False, global_productions, type_casts)
 						if parameter_reduction is not None:
 							reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, parameter_reduction, production_node.type))
 					while current_token.lexeme != ")": # TODO: does not support nested parenthesis 
 						current_token = current_token.next 
 					current_token = current_token.next 
-					production_node = production_node.next 
-				elif production_node.type == "identifier": 
-					if current_token.token == Token.ID: 
-						print("ID Found!")
+					production_node = production_node.next
+				elif production_node.type in {'identifier', 'value', 'string'}: 
+					if current_token.token == Token.ID:
 						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, '"' + current_token.lexeme + '"', production_node.type)) 
 						current_token = current_token.next
 						production_node = production_node.next 
@@ -445,7 +487,7 @@ def try_reduce(head_token, production, statement, global_productions):
 					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 
 					production_node = production_node.next 
-				elif (current_token.token == Token.NUMBER and production_node.type == "int") or (current_token.token == Token.STRING and production_node.type == "string"): 
+				elif (current_token.token == Token.NUMBER and production_node.type == "int") or (current_token.token == Token.STRING and production_node.type == "string") or (production_node.type == 'value'): 
 					# It's expecting a number and the current token is a number 
 					reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, current_token.lexeme, production_node.type))
 					current_token = current_token.next 

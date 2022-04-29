@@ -1,13 +1,22 @@
-func int: type
-	return int
-
 func <type var_type> <identifier id>:
 	~INSERT @id, @var_type
+	
+func <identifier given_id>: value 
+	return given_id
+	
+func <value given_value>: int 
+	return given_value
+	
+func <int given_int>: value 
+	return given_int
+	
+func <type var_type> <identifier id>: 
+	~INSERT @id, @var_type 
 
-func <identifier id> = <int val>: 
+func <identifier id> = <value val>: 
 	~ASSIGN @id, @val
 
-func <type var_type> <identifier id> = <int val>:
+func <type var_type> <identifier id> = <value val>:
 	~INSERT @id, @var_type 
 	~ASSIGN @id, @val
 
@@ -76,8 +85,5 @@ block while <bool b>:
 		~EXCON
 		~BR start_loop
 
-func display <int val>: 
+func display <value val>: 
 	~PRINT @val
-
-func display <string val>: 
-	~PRINT @val 
