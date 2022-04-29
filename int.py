@@ -12,6 +12,33 @@ global blocks
 global progress_program_counter
 
 
+class ProgramStack: 
+	def __init__(self): 
+		self.stack = [] # List of (int, str) tuples representing (PC, function name) 
+		self.function = None
+
+
+	# PC: the program counter we left off at. 
+	# Label: the name of the function we are going to. 
+	def push(self, pc, label): 
+		self.stack.append((pc, label))
+
+	
+	# Returns the PC of where we left off. 
+	def pop(self):
+		return self.stack.pop()[0]
+
+
+	# Returns the name of the function we are currently in. 
+	def current_function(self): 
+		return self.stack[-1][1]
+
+	
+	# Returns the PC of the statement we left off on (that initiated the branch). 
+	def last_pc(self): 
+		return self.stack[-1][0] 
+
+
 class Code:
 	class Variable: 
 		def __init__(self, var_type = "EMPTY", value = None): 
@@ -36,13 +63,7 @@ class Code:
 			else:
 				self.label = args 
 				self.var_name = None 
-
-		
-		def execute(self):
-			global pc 
-			stack.append((pc, self.label))
-			pc = functions[self.label] - 1
-
+	
 
 		def __str__(self): 
 			return "FUNC " + self.label + (", " + self.var_name if self.var_name is not None else "")
@@ -50,6 +71,13 @@ class Code:
 
 		def __repr__(self):
 			return str(self) 
+
+
+		def execute(self):
+			global pc 
+			stack.push(pc, self.label)
+			pc = functions[self.label] - 1
+
 
 
 	class Return:
@@ -70,10 +98,10 @@ class Code:
 
 		def execute(self):
 			global pc 
-			if self.var_name is not None: 
-				destination_var = program[stack[-1][0]].var_name 
+			if self.var_name is not None:
+				destination_var = program[stack.last_pc()].var_name 
 				variables[destination_var] = variables[self.var_name] 
-			pc = stack.pop()[0]
+			pc = stack.pop()
 
 
 	class Insert: 
@@ -198,14 +226,12 @@ class Code:
 		def __init__(self, args):	
 			parts = args.split(', ')
 			self.result = parts[0]
-			self.arg1_indirect = parts[1][0] == '@' 
-			self.arg1 = parts[1][1:] if self.arg1_indirect else parts[1] 
-			self.arg2_indirect = parts[2][0] == '@' 
-			self.arg3 = parts[2][1:] if self.arg2_indirect else parts[2] 
+			self.arg1 = parts[1] 
+			self.arg2 = parts[2] 
 
 
 		def __str__(self): 
-			return "SUB " + self.result + ", " + ('@' if self.arg1_indirect else '') + self.arg1 + ", " + ('@' if self.arg2_indirect else '') + self.arg2
+			return f"SUB {self.result}, {self.arg1}, {self.arg2}"
 
 
 		def __repr__(self): 
@@ -213,10 +239,10 @@ class Code:
 
 
 		def execute(self):
-			arg1 = variables[self.arg1].value if self.arg1_indirect else self.arg1 
-			arg2 = variables[self.arg2].value if self.arg2_indirect else self.arg2 
-			#print(arg1, arg2, variables[arg1], variables[arg2]) 
-			variables[self.result].value = arg1 - arg2 
+			arg1 = Code.int_value_of(self.arg1) 
+			arg2 = Code.int_value_of(self.arg2)  
+			result = Code.var_at(self.result) 
+			variables[result].value = arg1 - arg2 
 
 
 
@@ -258,15 +284,8 @@ class Code:
 		def execute(self):
 			global pc
 			global progress_program_counter 
-
-			var_name = Code.var_at(self.var_name) 
 			
-			if Code.condition(variables[var_name].value, self.cond):
-				blocks.append((program[stack[-1][0]].contents_end, pc))
-				pc = program[stack[-1][0]].contents_start + 1 
-				progress_program_counter = False 
-			else: 
-				pc = program[stack[-1][0]].contents_end
+			print("ERROR: DEPRECIATED CODE!!! ExecuteContentsCondition")
 
 
 	class ExecuteContents: 
@@ -285,11 +304,23 @@ class Code:
 		def execute(self):
 			global pc
 			global progress_program_counter 
+			
+			#blocks.append((program[stack[-1][0]].contents_end, pc))
+			top_statement = program[stack.last_pc()] # FUNC call
+			
+			# This statement must be a block, so block_start will be defined
+			old_pc = pc 
+			pc = top_statement.contents_start + 1
 
-			blocks.append((program[stack[-1][0]].contents_end, pc))
-			#print("Branching", pc, "to new pc", program[stack[-1][0]].contents_start)
-			pc = program[stack[-1][0]].contents_start + 1 
+			bottom_statement = program[top_statement.contents_end] # last statement in block
+			bottom_statement.block_end_branch_to = old_pc # when done with block, branch here 
+			bottom_statement.block_end_func_name = stack.current_function() 
+			bottom_statement.block_end_add_stack = stack.pop() # when done with block, add this back to the stack 
+
+			#pc = program[stack[-1][0]].contents_start
 			progress_program_counter = False 
+
+			#print("Changing PC from", old_pc, "to", pc) 
 
 
 	class Copy: 
@@ -331,7 +362,7 @@ class Code:
 		def execute(self): 
 			global pc 
 			#print("Branch from", pc, "to", labels[stack[-1][1]][self.label])
-			pc = labels[stack[-1][1]][self.label]
+			pc = labels[stack.current_function()][self.label]
 
 
 	class BranchConditional:
@@ -358,7 +389,7 @@ class Code:
 			#print(self.arg1, self.arg2, arg1, arg2, self.cond, Code.condition(arg1, arg2, self.cond)) 
 			if Code.condition(arg1, arg2, self.cond): 
 				#print("Branch taken:", pc, labels[stack[-1][1]][self.label])
-				pc = labels[stack[-1][1]][self.label] 
+				pc = labels[stack.current_function()][self.label] 
 
 
 	class Compare: 
@@ -385,7 +416,7 @@ class Code:
 			boolean = Code.condition(arg1, arg2, self.sign) 
 			variables[result].value = 1 if boolean else 0
 			variables[result].type = "bool"
-			#print(self.arg1, self.arg2, arg1, arg2, self.result, result, boolean, self.sign) 
+			#print("Compare:", self.arg1, self.arg2, arg1, arg2, self.result, result, boolean, self.sign) 
 
 
 	# Returns the argument interpreted as an int. Leading @s represent indirection. 
@@ -475,11 +506,12 @@ class Code:
 					block.pop()
 				elif command == "LABEL": 
 					labels[label_name][arguments] = len(program) - 1
+					#print(labels)
 					#print("Label created:", label_name, len(program)-1)
 				elif len(command) > 0: 
 					print(f"ERROR: Command '{command}' not recognized")
 
-				if label_created:
+				if label_created and command != 'LABEL':
 					functions[label_name] = len(program) - 1
 					label_created = False
 		return program 
@@ -508,12 +540,13 @@ if __name__ == "__main__":
 		
 		functions = {}
 		variables = defaultdict(Code.Variable) 
-		stack = []
+		stack = ProgramStack() 
 		labels = defaultdict(dict) # key is the name of the function, value is the PC 
 		blocks = [] 
 		progress_program_counter = True 
 
 		program = Code.parse(lines)
+		#print(functions)
 		if display_mode == '-code':
 			counter = 0
 			while counter < len(program): 
@@ -524,13 +557,24 @@ if __name__ == "__main__":
 		while pc < len(program):
 			if display_mode == '-lines': print(program[pc]) 
 			program[pc].execute() 
-			if progress_program_counter: 
-				if len(blocks) > 0 and blocks[-1][0] == pc: # we've just finished executing a block we were scanning for 
-					pc = blocks[-1][1]
-					blocks.pop()
-				elif hasattr(program[pc], 'contents_end'): 
-					#print("Skipping function", pc, "to new pc", program[pc].contents_end) 
-					pc = program[pc].contents_end # skip the contents, the function should invoke this manually
 			
-			if progress_program_counter: pc = pc + 1
-			else: progress_program_counter = True
+			if progress_program_counter: 
+				if hasattr(program[pc], "block_end_branch_to"):
+					# This command marks the end of a branch. 
+					command = program[pc] 
+					pc = command.block_end_branch_to 
+					stack.push(command.block_end_add_stack, command.block_end_func_name) 					
+
+					delattr(command, "block_end_branch_to") 
+					delattr(command, "block_end_add_stack")
+					delattr(command, "block_end_func_name")
+
+					#print("   Reached the end of a branch. Going to", pc, "with stack", stack.stack) 
+				elif hasattr(program[pc], "contents_start"): 
+					# This is the start of a block. We shouldn't run this here, this should be invoked somewhere else. 
+					pc = program[pc].contents_end 
+					#print("   Skipped the start of a branch") 
+
+				pc += 1 
+			else: 
+				progress_program_counter = True 

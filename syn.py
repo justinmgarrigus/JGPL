@@ -288,7 +288,7 @@ class Reduction:
 			if isinstance(self.value, Reduction): 
 				return self.value.code(is_parameter=True) + f"ASSIGN {self.alias}, @result"
 			else: 
-				return f"ASSIGN {self.alias}, {self.code_value}" # self.value must already be a string 
+				return "" if self.alias == self.code_value else f"ASSIGN {self.alias}, {self.code_value}" # self.value must already be a string 
 
 
 		def __str__(self): 
@@ -324,7 +324,9 @@ class Reduction:
 				pass 
 			parameter = parameter[0] # for now, just take the first choice 
 			
-			code = parameter.code() + "\n" + code 
+			param_code = parameter.code() 
+			if len(param_code) > 0:
+				code = param_code + '\n' + code
 		return code 
 
 

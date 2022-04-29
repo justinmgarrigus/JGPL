@@ -59,7 +59,6 @@ class Lex:
 
 # Returns a linked list of Token nodes representing the lexical analysis step of compilation
 def lex(filenames):
-	print(filenames) 
 	if isinstance(filenames, str):
 		filenames = [filenames] 
 

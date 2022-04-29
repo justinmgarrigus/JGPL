@@ -69,6 +69,12 @@ block increase <identifier for_id> from <int start> to <int end> by <int incr>:
 	~IADD @for_id, @for_id, @incr 
 	~BR start_loop 
 	~LABEL end_loop
+	
+block while <bool b>: 
+	~LABEL start_loop 
+	if b: 
+		~EXCON
+		~BR start_loop
 
 func display <int val>: 
 	~PRINT @val
