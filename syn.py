@@ -364,12 +364,13 @@ def syn(tokens, display_mode = "-none"):
 		if Function.is_function(current_command): 
 			func = Function.create_function(current_command)
 			if func.head == func.tail and isinstance(func.head, Parameter) and func.head.type != func.return_type: 
-				print("CAST FOUND:", func.head.type, "->", func.return_type) 
+				#print("CAST FOUND:", func.head.type, "->", func.return_type) 
 				type_casts[func.head.type].append(func.return_type)
 			else: 
 				productions[func.return_type].append(func)
 			code += func.name + ":\n" 
 			return_specified = False 
+			#print("ADDED PRODUCTION:", productions) 
 		elif current_command[0].lexeme == "return": 
 			if current_command.next is not None: 
 				print("ERROR: command following return must be None") 
@@ -380,16 +381,16 @@ def syn(tokens, display_mode = "-none"):
 		elif current_command[0].lexeme == 'main': 
 			code += "main:\n" 
 		else: 
-			print("Reducing:", current_command)
+			#print("Reducing:", current_command)
 			valid_reductions = reduce_statement(productions, type_casts, current_command.head) 
-			print("Reductions yielded:", valid_reductions)
+			#print("Reductions yielded:", valid_reductions)
 			if len(valid_reductions) > 0: 
 				# find reduction with least number of parameters 
 				reduction = valid_reductions[0]
 				for r in valid_reductions[1:]:
 					if r.compare(reduction):
 						reduction = r # if True, then r is "more preferrable"  
-				print("Reduction taken:", reduction)
+				#print("Reduction taken:", reduction)
 				code += reduction.code() 
 			else: 
 				print("ERROR: no valid reductions", current_command)
@@ -440,11 +441,12 @@ def production_list(global_productions, type_casts, var_type):
 	for value in type_casts[var_type]:
 		prod.extend(global_productions[value])
 	prod.extend(global_productions[var_type])
+	#print("Production list for", var_type, type_casts, prod) 
 	return prod 
 
 
 def try_reduce(head_token, production, statement, global_productions, type_casts): 
-	print("Attempting to reduce by:", production)
+	#print("Attempting to reduce by:", production)
 	current_token = head_token 
 	production_node = production.head 
 	reduction = Reduction(production)
@@ -453,34 +455,15 @@ def try_reduce(head_token, production, statement, global_productions, type_casts
 			reduction.parameters.append([]) 
 			if current_token.lexeme == "(": # we're reducing to something else 
 				current_token = current_token.next 
-				if production_node.type in global_productions: # the return type is something a production yields 
-#					if production_node.type == 'value': 
-#						# values can apply to every production type 
-#						production_possibilities = [] 
-#						for return_type, production_list in global_productions.items(): 
-#							if return_type != None: 
-#								production_possibilities.extend(production_list) 
-#					else: 
-					#production_possibilities = global_productions[production_node.type] # + global_productions['value']
-
-					for possible_production in production_list(global_productions, type_casts, production_node.type): 
-						#print("Checking reduction:", production_node.type, possible_production.return_type, possible_production)
-						parameter_reduction = try_reduce(current_token, possible_production, False, global_productions, type_casts)
-						if parameter_reduction is not None:
-							reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, parameter_reduction, production_node.type))
-					while current_token.lexeme != ")": # TODO: does not support nested parenthesis 
-						current_token = current_token.next 
+				for possible_production in production_list(global_productions, type_casts, production_node.type): 
+					#print("Checking reduction:", production_node.type, possible_production.return_type, possible_production)
+					parameter_reduction = try_reduce(current_token, possible_production, False, global_productions, type_casts)
+					if parameter_reduction is not None:
+						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, parameter_reduction, production_node.type))
+				while current_token.lexeme != ")": # TODO: does not support nested parenthesis 
 					current_token = current_token.next 
-					production_node = production_node.next
-				elif production_node.type in {'identifier', 'value', 'string'}: 
-					if current_token.token == Token.ID:
-						reduction.parameters[-1].append(Reduction.PassedParameter(production_node.alias, '"' + current_token.lexeme + '"', production_node.type)) 
-						current_token = current_token.next
-						production_node = production_node.next 
-					else:
-						return None
-				else:
-					print("Return type not recognized:", production_node.type) 
+				current_token = current_token.next 
+				production_node = production_node.next
 			else: # this is a parameter, but the next node alone must be the ENTIRE reduction. 
 				if current_token.token == Token.ID: 
 					# "ID" is basically a wildcard, it can be any type at runtime. 

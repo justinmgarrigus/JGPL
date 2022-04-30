@@ -165,15 +165,17 @@ class Code:
 				variables[var_name].type = self.type 
 
 			#print(var_name, "=", value)
+			#print(variables)
 
 
 	class Input: 
-		def __init__(self, args):
-			self.var_name = args 
+		def __init__(self, args, var_type):
+			self.var_name = args  
+			self.type = var_type
 
 
 		def __str__(self):
-			return "IINPUT " + self.var_name 
+			return f"{self.type}INPUT {self.var_name}" 
 
 
 		def __repr__(self): 
@@ -181,7 +183,10 @@ class Code:
 
 
 		def execute(self):
-			variables[self.var_name].value = int(input())
+			value = input() 
+			if self.type == 'I':
+				value = int(value) 
+			variables[self.var_name].value = value
 
 
 	class Add: 
@@ -233,20 +238,19 @@ class Code:
 
 	class Print: 
 		def __init__(self, args): 
-			self.var_name_indirect = args[0] == '@' 
-			self.var_name = args[1:] if self.var_name_indirect else args 
+			self.var_name = args 
 
 
 		def __str__(self):
-			return "PRINT " + ('@' if self.var_name_indirect else '') + self.var_name 
+			return f"PRINT {self.var_name}"
 
 
 		def __repr__(self): 
 			return str(self) 
 
 
-		def execute(self): 
-			value = variables[self.var_name].value if self.var_name_indirect else self.var_name
+		def execute(self):
+			value = Code.var_at(self.var_name) 
 			if isinstance(value, str) and '\\n' in value: 
 				value = value.replace('\\n', '\n')
 			print(value, end="")
@@ -475,7 +479,11 @@ class Code:
 			var_name = Code.var_at(self.var_name) 
 			#print("Retrieve:", result, obj, var_name, variables[obj].value)
 			#print("All variables:", variables)
-			variables[result].value = variables[obj].value[var_name]
+			#print(result, obj, var_name) 
+			if not isinstance(obj, dict): # TODO fix this 
+				variables[result].value = variables[obj].value[var_name]
+			else: 
+				variables[result].value = obj[var_name]
 			#print(obj, variables[obj].value) 
 
 
@@ -548,8 +556,8 @@ class Code:
 					program.append(Code.Branch(arguments)) 
 				elif command.startswith("BR"): 
 					program.append(Code.BranchConditional(arguments, command[2:].lower())) 
-				elif command == "IINPUT":
-					program.append(Code.Input(arguments))
+				elif command == "IINPUT" or command == "SINPUT":
+					program.append(Code.Input(arguments, command[0]))
 				elif command == "IADD": 
 					program.append(Code.Add(arguments))
 				elif command == "ISUB":

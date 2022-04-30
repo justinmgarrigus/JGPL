@@ -10,6 +10,12 @@ func <value given_value>: int
 func <int given_int>: value 
 	return given_int
 	
+func <value given_value>: string 
+	return given_value 
+	
+func <string given_string>: value 
+	return given_string 
+	
 func <type var_type> <identifier id>: 
 	~INSERT @id, @var_type 
 
@@ -70,6 +76,11 @@ func int input: int
 	~IINPUT temp
 	return temp
 	
+func string input: string 
+	string temp 
+	~SINPUT temp 
+	return temp 
+	
 block increase <identifier for_id> from <int start> to <int end> by <int incr>: 
 	~ASSIGN @for_id, @start 
 	~LABEL start_loop
@@ -87,3 +98,11 @@ block while <bool b>:
 
 func display <value val>: 
 	~PRINT @val
+	
+func get <identifier id_name> from <value obj>: value 
+	value temp
+	~RETRIEVE temp, @obj, @id_name
+	return temp
+
+func set <identifier id> in <value obj> to <value v>: 
+	~ATTRIBUTE @obj, @id, @v

@@ -4,14 +4,6 @@ func <human h>: value
 func <value v>: human
 	return v
 
-func get <identifier id_name> from <human h>: value 
-	value temp
-	~RETRIEVE temp, @h, @id_name
-	return temp
-
-func set <identifier id> in <human h> to <value v>: 
-	~ATTRIBUTE @h, @id, @v
-
 func create human { name = <string name>, age = <int age> }: human 
 	human h
 	~OBJECT h 
@@ -31,7 +23,12 @@ func <human h> birthday:
 	set age in h to age 
 	
 main: 
-	human test_human = (create human { name = "justin", age = 20 })
+	display "Input human one's name: "
+	string name = (string input) 
+	display "Input human one's age: "
+	int age = (int input) 
+	
+	human test_human = (create human { name = name, age = age })
 	
 	display "Before birthday: "
 	display human test_human
@@ -43,7 +40,12 @@ main:
 	display human test_human 
 	display "\n"
 	
-	human second_human = (create human { name = "sophie", age = 25 })
+	display "Input human two's name: "
+	name = (string input) 
+	display "Input human two's age: "
+	age = (int input) 
+	
+	human second_human = (create human { name = name, age = age })
 	
 	display "Second human: " 
 	display human second_human 

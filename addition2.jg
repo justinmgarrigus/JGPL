@@ -1,7 +1,7 @@
 main: 
 	int a = 5 
 	int b = 7 
-	display "type a number: " 
+	display "Type a number: " 
 	int c = (int input)
 	int d = (a + b)
 	d = (d + c)
