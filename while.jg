@@ -1,7 +1,0 @@
-main: 
-	display "Enter the number 5: "
-	int i = (int input) 
-	while (i ne 5):
-		display "That's not 5! Type in the number 5: "
-		i = (int input) 
-	display "You successfully typed in 5!\n"

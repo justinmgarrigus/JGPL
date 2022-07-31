@@ -1,9 +1,0 @@
-main: 
-	display "Type a number: "
-	int i = (int input) 
-	if (i ge 0):
-		display i
-		display " is a positive number!\n"
-	if (i lt 0): 
-		display i
-		display " is a negative number!\n"
