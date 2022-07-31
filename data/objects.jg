@@ -1,0 +1,58 @@
+func <human h>: value 
+	return h
+	
+func <value v>: human
+	return v
+
+func create human { name = <string name>, age = <int age> }: human 
+	human h
+	~OBJECT h 
+	~ATTRIBUTE h, name, @name
+	~ATTRIBUTE h, age, @age 
+	return h 
+
+func display human <human h>:
+	display "Name = "
+	display (get name from h) 
+	display ", age = "
+	display (get age from h) 
+	
+func <human h> birthday:
+	int age = (get age from h)
+	age = (age + 1)
+	set age in h to age 
+	
+main: 
+	display "Input human one's name: "
+	string name = (string input) 
+	display "Input human one's age: "
+	int age = (int input) 
+	
+	human test_human = (create human { name = name, age = age })
+	
+	display "Before birthday: "
+	display human test_human
+	display "\n"
+	
+	test_human birthday 
+	
+	display "After birthday: "
+	display human test_human 
+	display "\n"
+	
+	display "Input human two's name: "
+	name = (string input) 
+	display "Input human two's age: "
+	age = (int input) 
+	
+	human second_human = (create human { name = name, age = age })
+	
+	display "Second human: " 
+	display human second_human 
+	display "\n" 
+	
+	second_human birthday 
+	
+	display "Second birthday: "
+	display human second_human 
+	display "\n" 

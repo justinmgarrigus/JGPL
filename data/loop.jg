@@ -1,0 +1,11 @@
+main:
+	display "Enter the starting value: "
+	int start = (int input) 
+	display "Enter the ending value: "
+	int end = (int input) 
+	display "Enter the increment: "
+	int incr = (int input)
+	increase index from start to end by incr: 
+		display index
+		display " "
+	display "\n" 

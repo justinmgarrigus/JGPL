@@ -1,0 +1,49 @@
+block add code to <code_block block>: 
+	code_block contents = contents of self
+	~APPENDBLOCK self, block
+
+func int: type
+	return int
+
+func contents of <block_header header>: code_block
+	code_block contents 
+	~BLOCKCONTENTS contents, code_block 
+	return contents
+
+func get <identifier id> enclosing scope: code_block
+	code_block scope
+	~SCOPE id, scope
+	return scope
+
+func <int var1> + <int var2>: int 
+	int temp 
+	~IADD temp, var1, var2
+	return temp 
+	
+func <identifier id> = <int val>: 
+	~ASSIGN id, val
+
+func <type var_type> <identifier id>:
+	~INSERT id, type
+	code_block block = get id enclosing scope 
+	add code to block: 
+		~REMOVE id
+
+func <type var_type> <identifier id> = <int val>:
+	var_type id
+	id = val
+
+func int input: int
+	int temp
+	~IINPUT temp
+	return temp
+	
+func display <int val>: 
+	~PRINT val
+
+int a = 5 
+int b = 7 
+int c = (int input)
+int d = (a + b)
+d = (d + c)
+display d

@@ -1,0 +1,15 @@
+main: 
+	int a = 5 
+	int b = 7 
+	display "Type a number: " 
+	int c = (int input)
+	int d = (a + b)
+	d = (d + c)
+	display a
+	display " + "
+	display b 
+	display " + "
+	display c
+	display " = "
+	display d
+	display "\n"
